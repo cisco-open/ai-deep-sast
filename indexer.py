@@ -527,20 +527,6 @@ class CodeIndex:
         """Get all indexed functions."""
         return [f.to_dict() for f in self._functions.values()]
 
-    def get_stats(self) -> Dict[str, Any]:
-        """Get index statistics."""
-        languages: Dict[str, int] = defaultdict(int)
-        for func in self._functions.values():
-            languages[func.language] += 1
-
-        return {
-            "total_functions": len(self._functions),
-            "total_files": len(self._by_file),
-            "total_call_edges": sum(len(v) for v in self._callees.values()),
-            "languages": dict(languages),
-            "queryable": self._queryable,
-        }
-
     # --- Persistence ---
 
     def save(self, path: str):

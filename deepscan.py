@@ -42,13 +42,11 @@ from typing import Any, Dict, List, Optional
 
 from asvs_loader import ASVSLoader
 from codeguard_loader import CodeGuardLoader
-from coverage_guide import CoverageGuide
 from detector import Detector
 from finding_store import FindingStore
 from deepscan_reporter import DeepScanReporter
 from indexer import CodeIndex
 from llm_client import LLMClient
-from redactor import run_semgrep_for_secrets
 from rule_matcher import RuleMatcher
 from triager import Triager
 
@@ -64,8 +62,7 @@ class Orchestrator:
     2. Code indexing (tree-sitter, 15 languages)
     3. LLM-powered detection (rule-based + exploratory)
     4. Evidence-gated triage
-    5. Coverage tracking
-    6. Report generation
+    5. Report generation
     """
 
     def __init__(self, target: str, output_dir: str = "security-reports",
@@ -100,7 +97,6 @@ class Orchestrator:
         self.llm: Optional[LLMClient] = None
         self.detector: Optional[Detector] = None
         self.triager: Optional[Triager] = None
-        self.coverage: Optional[CoverageGuide] = None
         self.reporter: Optional[DeepScanReporter] = None
 
     def run(self) -> Dict[str, Any]:
@@ -152,13 +148,6 @@ class Orchestrator:
                 results["error"] = "No functions found in target"
                 return results
 
-            # Phase 2: Coverage checklist
-            logger.info("")
-            logger.info("--- Phase 2: Coverage checklist ---")
-            checklist_ids = self.coverage.generate_checklist()
-            results["phases"]["coverage_items"] = len(checklist_ids)
-            logger.info("Generated %d coverage items", len(checklist_ids))
-
             if self.dry_run:
                 logger.info("")
                 logger.info("--- DRY RUN — skipping LLM phases ---")
@@ -167,18 +156,18 @@ class Orchestrator:
                 self._save_index()
                 return results
 
-            # Phase 3: Detection
+            # Phase 2: Detection
             logger.info("")
-            logger.info("--- Phase 3: Detection ---")
+            logger.info("--- Phase 2: Detection ---")
             detect_stats = self._run_detection()
             results["phases"]["detection"] = detect_stats
             logger.info("Detection: %d candidates from rule-based, %d from exploratory",
                         detect_stats.get("rule_based", {}).get("candidates_created", 0),
                         detect_stats.get("exploratory", {}).get("candidates_created", 0))
 
-            # Phase 4: Triage
+            # Phase 3: Triage
             logger.info("")
-            logger.info("--- Phase 4: Triage ---")
+            logger.info("--- Phase 3: Triage ---")
             triage_stats = self.triager.triage_all_candidates()
             results["phases"]["triage"] = triage_stats
             logger.info("Triage: TP:%d FP:%d NR:%d",
@@ -186,9 +175,9 @@ class Orchestrator:
                         triage_stats.get("false_positive", 0),
                         triage_stats.get("needs_review", 0))
 
-            # Phase 5: Reports
+            # Phase 4: Reports
             logger.info("")
-            logger.info("--- Phase 5: Reports ---")
+            logger.info("--- Phase 4: Reports ---")
             report_path = self.reporter.generate_report(
                 show_needs_review=self.show_needs_review
             )
@@ -250,7 +239,6 @@ class Orchestrator:
         if not self.dry_run:
             self.llm = self._build_llm_client()
 
-        self.coverage = CoverageGuide(self.index, self.store)
         self.reporter = DeepScanReporter(
             self.store, output_dir=self.output_dir,
             repo_url=self.repo_url, commit_sha=self.commit_sha,

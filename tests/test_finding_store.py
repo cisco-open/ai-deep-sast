@@ -404,38 +404,6 @@ class TestRuleGaps:
         gaps = store.get_rule_gaps()
         assert len(gaps) == 2
 
-
-# --- Coverage (§5.7) ---
-
-class TestCoverage:
-    """Tests for coverage tracking."""
-
-    def test_coverage_lifecycle(self, store):
-        cid1 = store.add_coverage_item("auth-module", "Test for bypass")
-        cid2 = store.add_coverage_item("api-gateway", "Test for injection")
-
-        assert not store.is_coverage_complete()
-
-        store.close_coverage_item(cid1, "Swept with rule-based + exploratory, found 2 issues")
-        assert not store.is_coverage_complete()
-
-        store.close_coverage_item(cid2, "Swept, found nothing")
-        assert store.is_coverage_complete()
-
-    def test_coverage_empty_is_not_complete(self, store):
-        assert not store.is_coverage_complete()
-
-    def test_coverage_status(self, store):
-        store.add_coverage_item("auth", "bypass test")
-        store.add_coverage_item("api", "injection test")
-
-        status = store.get_coverage_status()
-        assert status["total"] == 2
-        assert status["open"] == 2
-        assert status["closed"] == 0
-        assert status["complete"] is False
-
-
 # --- Export ---
 
 class TestExport:
@@ -451,10 +419,8 @@ class TestExport:
     def test_export_summary(self, store):
         store.add_finding("a.py", "sqli", "test1")
         store.add_task("Task 1")
-        store.add_coverage_item("auth", "test")
 
         summary = store.export_summary()
         assert summary["findings"]["total"] == 1
         assert summary["tasks"]["open"] == 1
-        assert summary["coverage"]["total"] == 1
         assert summary["rule_gaps"] == 0

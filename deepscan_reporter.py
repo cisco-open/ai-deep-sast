@@ -123,8 +123,6 @@ class DeepScanReporter:
         lines.append(f"| False positives | {fp_count} |")
         lines.append(f"| Needs review | {nr_count} |")
 
-        coverage = summary.get("coverage", {})
-        lines.append(f"| Coverage items closed | {coverage.get('closed', 0)}/{coverage.get('total', 0)} |")
         lines.append(f"| Rule gaps recorded | {summary.get('rule_gaps', 0)} |")
         lines.append("")
 

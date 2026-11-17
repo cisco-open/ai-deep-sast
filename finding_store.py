@@ -124,19 +124,6 @@ CREATE TABLE IF NOT EXISTS rule_gaps (
     created_at TEXT NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS coverage_items (
-    id TEXT PRIMARY KEY,
-    component TEXT NOT NULL,
-    goal TEXT NOT NULL,
-    bar TEXT,
-    status TEXT DEFAULT 'open',
-    evidence TEXT,
-    created_at TEXT NOT NULL,
-    closed_at TEXT
-);
-
-CREATE INDEX IF NOT EXISTS idx_coverage_status ON coverage_items(status);
-
 CREATE TABLE IF NOT EXISTS processed_functions (
     fingerprint TEXT PRIMARY KEY,
     file_path TEXT NOT NULL,
@@ -567,64 +554,6 @@ class FindingStore:
             ).fetchall()
             return [dict(r) for r in rows]
 
-    # --- Coverage operations (§5.7) ---
-
-    def add_coverage_item(self, component: str, goal: str,
-                          bar: Optional[str] = None) -> str:
-        """Add a coverage checklist item (FR-067)."""
-        item_id = self._new_id()
-        now = self._now()
-
-        with self._connect() as conn:
-            conn.execute(
-                """INSERT INTO coverage_items
-                   (id, component, goal, bar, status, created_at)
-                   VALUES (?, ?, ?, ?, 'open', ?)""",
-                (item_id, component, goal, bar, now)
-            )
-        return item_id
-
-    def close_coverage_item(self, item_id: str, evidence: str) -> bool:
-        """Mark a coverage item as closed with evidence (FR-069)."""
-        now = self._now()
-        with self._connect() as conn:
-            cursor = conn.execute(
-                """UPDATE coverage_items
-                   SET status = 'closed', evidence = ?, closed_at = ?
-                   WHERE id = ? AND status = 'open'""",
-                (evidence, now, item_id)
-            )
-            return cursor.rowcount > 0
-
-    def is_coverage_complete(self) -> bool:
-        """Check if all coverage items are closed (FR-071)."""
-        with self._connect() as conn:
-            open_count = conn.execute(
-                "SELECT COUNT(*) FROM coverage_items WHERE status = 'open'"
-            ).fetchone()[0]
-            total = conn.execute(
-                "SELECT COUNT(*) FROM coverage_items"
-            ).fetchone()[0]
-            return total > 0 and open_count == 0
-
-    def get_coverage_status(self) -> Dict[str, Any]:
-        """Get coverage checklist status."""
-        with self._connect() as conn:
-            total = conn.execute("SELECT COUNT(*) FROM coverage_items").fetchone()[0]
-            closed = conn.execute(
-                "SELECT COUNT(*) FROM coverage_items WHERE status = 'closed'"
-            ).fetchone()[0]
-            items = conn.execute(
-                "SELECT * FROM coverage_items ORDER BY created_at"
-            ).fetchall()
-            return {
-                "total": total,
-                "closed": closed,
-                "open": total - closed,
-                "complete": total > 0 and closed == total,
-                "items": [dict(r) for r in items],
-            }
-
     # --- Export ---
 
     def export_findings_json(self, state: Optional[FindingState] = None,
@@ -637,7 +566,6 @@ class FindingStore:
         """Export a summary of the store's state."""
         return {
             "findings": self.get_findings_count(),
-            "coverage": self.get_coverage_status(),
             "tasks": {
                 "open": len(self.get_tasks(TaskState.OPEN)),
                 "blocked": len(self.get_tasks(TaskState.BLOCKED)),
