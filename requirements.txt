@@ -18,4 +18,4 @@ tree-sitter-c-sharp>=0.23.0
 tree-sitter-php>=0.24.0
 tree-sitter-swift>=0.7.0
 tree-sitter-bash>=0.25.0
-openai>=1.30.0
+openai>=1.45.0
