@@ -76,7 +76,6 @@ ai-deep-sast/
 ├── triager.py                  # Evidence-gated triage agent
 ├── finding_store.py            # SQLite finding store & work queue
 ├── indexer.py                  # Tree-sitter code indexer (15 languages)
-├── coverage_guide.py           # Scan coverage tracker
 ├── redactor.py                 # Secret redaction before LLM calls
 ├── rule_matcher.py             # ASVS/CodeGuard rule matcher
 ├── requirements.txt            # Python dependencies
@@ -87,7 +86,7 @@ ai-deep-sast/
 │   ├── custom-secrets.yaml     # Custom Semgrep rules for secret detection
 │   ├── asvs/                   # ASVS 5.0 requirements (CC BY-SA 4.0, OWASP Foundation)
 │   └── codeguard/              # CodeGuard security patterns
-├── tests/                      # Test suite (240+ tests)
+├── tests/                      # Test suite (220+ tests)
 ├── samples/                    # Sample vulnerable files
 └── README.md                   # This file
 ```

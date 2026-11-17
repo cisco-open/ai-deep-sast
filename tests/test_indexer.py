@@ -229,7 +229,7 @@ class TestIndexBuild:
         f = tmp_path / "app.py"
         f.write_text("def foo(): pass")
         index.build(str(tmp_path))
-        assert index.get_stats()["total_functions"] == 1
+        assert len(index.get_all_functions()) == 1
 
         # Second build of unchanged file should skip
         stats = index.build(str(tmp_path))
@@ -240,12 +240,12 @@ class TestIndexBuild:
         f = tmp_path / "app.py"
         f.write_text("def foo(): pass")
         index.build(str(tmp_path))
-        assert index.get_stats()["total_functions"] == 1
+        assert len(index.get_all_functions()) == 1
 
         f.write_text("def foo(): pass\ndef bar(): pass")
         stats = index.build(str(tmp_path))
         assert stats["files_parsed"] == 1
-        assert index.get_stats()["total_functions"] == 2
+        assert len(index.get_all_functions()) == 2
 
     def test_build_graceful_on_parse_error(self, index, tmp_path):
         f = tmp_path / "bad.py"
@@ -308,16 +308,6 @@ class TestQueryInterface:
         index.build(python_file)
         results = index.full_text_search("ValueError")
         assert len(results) >= 1
-
-    def test_get_stats(self, index, multi_lang_dir):
-        index.build(multi_lang_dir)
-        stats = index.get_stats()
-        assert stats["total_functions"] >= 10
-        assert stats["total_files"] == 3
-        assert "python" in stats["languages"]
-        assert "java" in stats["languages"]
-        assert "javascript" in stats["languages"]
-
 
 # --- Persistence ---
 

@@ -85,11 +85,6 @@ class TestDryRun:
         orch.run()
         assert os.path.exists(os.path.join(output_dir, "deepscan_index.json"))
 
-    def test_dry_run_generates_coverage(self, scan_dir, output_dir):
-        orch = Orchestrator(target=scan_dir, output_dir=output_dir, dry_run=True)
-        results = orch.run()
-        assert results["phases"]["coverage_items"] == 2  # 2 files
-
     def test_dry_run_no_api_key_required(self, scan_dir, output_dir, monkeypatch):
         monkeypatch.delenv("LLM_API_KEY", raising=False)
         orch = Orchestrator(

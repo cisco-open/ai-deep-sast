@@ -109,7 +109,6 @@ COPY detector.py /app/detector.py
 COPY triager.py /app/triager.py
 COPY finding_store.py /app/finding_store.py
 COPY indexer.py /app/indexer.py
-COPY coverage_guide.py /app/coverage_guide.py
 COPY redactor.py /app/redactor.py
 COPY rule_matcher.py /app/rule_matcher.py
 COPY asvs_loader.py /app/asvs_loader.py
