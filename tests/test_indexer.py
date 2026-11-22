@@ -88,6 +88,57 @@ function sanitize(input) {
 '''
 
 
+C_SAMPLE = '''\
+#include <string.h>
+
+static int add(int a, int b)
+{
+    return a + b;
+}
+
+char *copy_name(const char *src)
+{
+    return strdup(src);
+}
+
+int (*pick_handler(int kind))(int)
+{
+    return 0;
+}
+
+int main(void)
+{
+    return add(1, 2);
+}
+'''
+
+CPP_SAMPLE = '''\
+#include <string>
+
+class Session {
+public:
+    void close() {}
+    ~Session() {}
+};
+
+bool Session::is_valid() const
+{
+    return true;
+}
+
+bool operator==(const Session &a, const Session &b)
+{
+    return &a == &b;
+}
+
+std::string &last_error()
+{
+    static std::string err;
+    return err;
+}
+'''
+
+
 @pytest.fixture
 def python_file(tmp_path):
     f = tmp_path / "app.py"
@@ -106,6 +157,20 @@ def java_file(tmp_path):
 def js_file(tmp_path):
     f = tmp_path / "utils.js"
     f.write_text(JS_SAMPLE)
+    return str(f)
+
+
+@pytest.fixture
+def c_file(tmp_path):
+    f = tmp_path / "util.c"
+    f.write_text(C_SAMPLE)
+    return str(f)
+
+
+@pytest.fixture
+def cpp_file(tmp_path):
+    f = tmp_path / "session.cpp"
+    f.write_text(CPP_SAMPLE)
     return str(f)
 
 
@@ -174,6 +239,38 @@ class TestParser:
         assert "processData" in names
         assert "sanitize" in names
 
+    def test_parse_c_functions(self, c_file):
+        # C function_definition nodes have no "name" field: the name is at the
+        # end of the declarator chain (pointer and parenthesized declarators).
+        parser = TreeSitterParser()
+        functions, _ = parser.parse_file(c_file)
+        names = [f.name for f in functions]
+        assert names == ["add", "copy_name", "pick_handler", "main"]
+
+    def test_parse_c_line_numbers(self, c_file):
+        parser = TreeSitterParser()
+        functions, _ = parser.parse_file(c_file)
+        add = next(f for f in functions if f.name == "add")
+        assert add.start_line == 3
+        assert add.end_line == 6
+
+    def test_parse_c_calls(self, c_file):
+        parser = TreeSitterParser()
+        _, calls = parser.parse_file(c_file)
+        callee_names = [c[1] for c in calls]
+        assert "add" in callee_names
+        assert "strdup" in callee_names
+
+    def test_parse_cpp_functions(self, cpp_file):
+        parser = TreeSitterParser()
+        functions, _ = parser.parse_file(cpp_file)
+        names = [f.name for f in functions]
+        assert "close" in names
+        assert "~Session" in names
+        assert "is_valid" in names
+        assert "operator==" in names
+        assert "last_error" in names
+
     def test_parse_unsupported_extension(self, tmp_path):
         f = tmp_path / "readme.txt"
         f.write_text("not code")
@@ -207,6 +304,11 @@ class TestIndexBuild:
         assert stats["functions_found"] >= 5
         assert stats["errors"] == 0
         assert index.is_queryable
+
+    def test_build_indexes_c_file(self, index, c_file):
+        stats = index.build(c_file)
+        assert stats["files_parsed"] == 1
+        assert stats["functions_found"] == 4
 
     def test_build_directory(self, index, multi_lang_dir):
         stats = index.build(multi_lang_dir)

@@ -123,6 +123,27 @@ def _load_language(lang_name: str) -> Optional[Language]:
         return None
 
 
+# C and C++ function_definition nodes have no "name" field: the name is the
+# innermost declarator, e.g. pointer_declarator -> function_declarator -> identifier.
+_C_NAME_NODE_TYPES = {"identifier", "field_identifier", "destructor_name", "operator_name"}
+_C_WRAPPER_NODE_TYPES = {"parenthesized_declarator", "reference_declarator"}
+
+
+def _c_function_name_node(node):
+    """Return the name node of a C/C++ function_definition, or None."""
+    current = node.child_by_field_name("declarator")
+    while current is not None:
+        if current.type in _C_NAME_NODE_TYPES:
+            return current
+        if current.type in ("qualified_identifier", "template_function"):
+            current = current.child_by_field_name("name")
+        elif current.type in _C_WRAPPER_NODE_TYPES:
+            current = current.named_children[-1] if current.named_children else None
+        else:
+            current = current.child_by_field_name("declarator")
+    return None
+
+
 def _get_language_for_file(file_path: str) -> Optional[str]:
     """Get the language name for a file based on extension."""
     ext = os.path.splitext(file_path)[1].lower()
@@ -254,6 +275,8 @@ class TreeSitterParser:
                           lang_name: str, class_name: Optional[str]) -> Optional[FunctionInfo]:
         """Convert a tree-sitter node to FunctionInfo."""
         name_node = node.child_by_field_name("name")
+        if not name_node and lang_name in ("c", "cpp"):
+            name_node = _c_function_name_node(node)
         if not name_node:
             return None
 
